@@ -47,6 +47,8 @@ class Trainer(object):
         self.cuda = torch.cuda.is_available()
         if self.cuda:
             self.device = torch.device("cuda")
+        elif torch.npu.is_available():
+            self.device = torch.device("npu")
         else:
             self.device = torch.device("cpu")
 
@@ -533,6 +535,25 @@ class Trainer(object):
     def reset_dummy_batch(self, batch):
         self._dummy_batch = batch
 
+    def data_to_device(
+        self,
+        samples
+        ):
+        """Return samples from host to device."""
+        if not torch.npu.is_available():
+            return samples
+        if isinstance(samples, list) or isinstance(samples, tuple):
+            for i in range(len(samples)):
+                samples[i] = self.data_to_device(samples[i])
+        elif isinstance(samples, dict):
+            for k, v in samples.items():
+                samples[k] = self.data_to_device(v)
+        elif torch.is_tensor(samples):
+            samples = samples.npu()
+        else:
+            samples = samples
+        return samples
+
     @metrics.aggregate("train")
     def train_step(self, samples, raise_oom=False):
         """Do forward, backward and parameter update."""
@@ -546,6 +567,7 @@ class Trainer(object):
         logging_outputs, sample_size, ooms = [], 0, 0
         for i, sample in enumerate(samples):  # delayed update loop
             sample, is_dummy_batch = self._prepare_sample(sample)
+            sample = self.data_to_device(sample)
 
             def maybe_no_sync():
                 """
@@ -772,6 +794,7 @@ class Trainer(object):
             self.loss.eval()
 
             sample, is_dummy_batch = self._prepare_sample(sample)
+            sample = self.data_to_device(sample)
 
             try:
                 _loss, sample_size, logging_output = self.task.valid_step(

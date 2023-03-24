@@ -149,7 +149,7 @@ class TransformerEncoder(nn.Module):
             attn_mask = attn_mask.view(x.size(0), -1, seq_len, seq_len)
             attn_mask.masked_fill_(
                 padding_mask.unsqueeze(1).unsqueeze(2).to(torch.bool),
-                float("-inf")
+                float("-1e9")
             )
             attn_mask = attn_mask.view(-1, seq_len, seq_len)
             padding_mask = None

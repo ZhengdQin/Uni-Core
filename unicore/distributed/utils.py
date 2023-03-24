@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Mapping, Optional
 from dataclasses import dataclass
 
 import torch
+import torch_npu
 import torch.distributed as dist
 
 
@@ -136,6 +137,8 @@ def distributed_init(args):
         # perform a dummy all-reduce to initialize the NCCL communicator
         if torch.cuda.is_available():
             dist.all_reduce(torch.zeros(1).cuda())
+        elif torch.npu.is_available() and not args.cpu:
+            dist.all_reduce(torch.zeros(1).npu())
 
     args.distributed_rank = torch.distributed.get_rank()
 
@@ -152,6 +155,9 @@ def distributed_main(i, main, args, kwargs):
     args.device_id = i
     if torch.cuda.is_available() and not args.cpu:
         torch.cuda.set_device(args.device_id)
+    if torch.npu.is_available() and not args.cpu:
+        torch.npu.set_device(args.device_id)
+        torch.npu.set_compile_mode(jit_compile=False)
     if args.distributed_rank is None:  # torch.multiprocessing.spawn
         args.distributed_rank = kwargs.pop("start_rank", 0) + i
 
@@ -327,7 +333,10 @@ def all_gather_list(data, group=None, max_size=16384):
         not hasattr(all_gather_list, "_buffer")
         or all_gather_list._buffer.numel() < buffer_size
     ):
-        all_gather_list._buffer = torch.cuda.ByteTensor(buffer_size)
+        if torch.cuda.is_available():
+            all_gather_list._buffer = torch.cuda.ByteTensor(buffer_size)
+        elif torch.npu.is_available():
+            all_gather_list._buffer = torch.npu.ByteTensor(buffer_size)
         all_gather_list._cpu_buffer = torch.ByteTensor(max_size).pin_memory()
     buffer = all_gather_list._buffer
     buffer.zero_()
@@ -442,6 +451,8 @@ def broadcast_tensors(
     if dist_device is None:
         if torch.distributed.get_backend(group) == "nccl":
             dist_device = torch.device("cuda")
+        if torch.distributed.get_backend(group) == "hccl":
+            dist_device = torch.device("npu")
         else:
             dist_device = torch.device("cpu")
 
@@ -480,6 +491,8 @@ def broadcast_object(
     if dist_device is None:
         if torch.distributed.get_backend(group) == "nccl":
             dist_device = torch.device("cuda")
+        if torch.distributed.get_backend(group) == "hccl":
+            dist_device = torch.device("npu")
         else:
             dist_device = torch.device("cpu")
 

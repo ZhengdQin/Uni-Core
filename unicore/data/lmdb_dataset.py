@@ -46,6 +46,7 @@ class LMDBDataset:
         if not hasattr(self, 'env'):
             self.connect_db(self.db_path, save_to_self=True)
         datapoint_pickled = self.env.begin().get(self._keys[idx])
+        import pickle5 as pickle
         data = pickle.loads(datapoint_pickled)
         return data
 

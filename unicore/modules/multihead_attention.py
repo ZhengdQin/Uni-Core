@@ -88,7 +88,7 @@ class SelfMultiheadAttention(nn.Module):
             # don't attend to padding symbols
             attn_weights = attn_weights.view(bsz, self.num_heads, tgt_len, src_len)
             attn_weights.masked_fill_(
-                key_padding_mask.unsqueeze(1).unsqueeze(2).to(torch.bool), float("-inf")
+                key_padding_mask.unsqueeze(1).unsqueeze(2).to(torch.bool), float("-1e9")
             )
             attn_weights = attn_weights.view(bsz * self.num_heads, tgt_len, src_len)
 
@@ -203,7 +203,7 @@ class CrossMultiheadAttention(nn.Module):
             # don't attend to padding symbols
             attn_weights = attn_weights.view(bsz, self.num_heads, tgt_len, src_len)
             attn_weights.masked_fill_(
-                key_padding_mask.unsqueeze(1).unsqueeze(2).to(torch.bool), float("-inf")
+                key_padding_mask.unsqueeze(1).unsqueeze(2).to(torch.bool), float("-1e9")
             )
             attn_weights = attn_weights.view(bsz * self.num_heads, tgt_len, src_len)
 

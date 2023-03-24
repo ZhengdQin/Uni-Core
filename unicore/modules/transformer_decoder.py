@@ -13,7 +13,7 @@ from .transformer_encoder import relative_position_bucket
 
 
 def fill_with_neg_inf(t):
-    return t.fill_(float("-inf"))
+    return t.fill_(float("-1e9"))
 
 
 def bulid_future_mask(seq_len):
@@ -154,7 +154,7 @@ class TransformerDecoder(nn.Module):
             attn_mask = attn_mask.view(x.size(0), -1, seq_len, seq_len)
             attn_mask.masked_fill_(
                 padding_mask.unsqueeze(1).unsqueeze(2).to(torch.bool),
-                float("-inf")
+                float("-1e9")
             )
             attn_mask = attn_mask.view(-1, seq_len, seq_len)
             padding_mask = None
